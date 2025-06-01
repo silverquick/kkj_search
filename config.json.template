@@ -20,6 +20,7 @@
   },
   "notification": {
     "from_email": "YOUR_EMAIL",
+    "from_name": "官公需情報システム",
     "to_emails": [
       "RECIPIENT_EMAIL"
     ],

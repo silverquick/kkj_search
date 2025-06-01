@@ -143,7 +143,7 @@ kkj-search-system/
 ### データベース
 - 権限エラー：`chmod 664 kkj_search.db`
 
-詳細は[README.md](README.md)を参照してください。
+詳細は[README_ORIGINAL.md](README_ORIGINAL.md)を参照してください。
 
 ## 貢献
 

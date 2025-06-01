@@ -153,6 +153,7 @@ nano config.json
 ```json
 "notification": {
   "from_email": "sender@example.com",
+  "from_name": "官公需情報システム",  // 送信者の表示名（オプション）
   "to_emails": [
     "recipient1@example.com",
     "recipient2@example.com"

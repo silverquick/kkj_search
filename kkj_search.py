@@ -7,6 +7,7 @@ import sqlite3
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from datetime import datetime
 import json
 import os
@@ -52,6 +53,7 @@ class KKJSearchNotifier:
                 },
                 "notification": {
                     "from_email": "your_email@example.com",
+                    "from_name": "官公需情報システム",
                     "to_emails": ["recipient@example.com"],
                     "subject": "【官公需】新規案件通知"
                 }
@@ -219,25 +221,57 @@ class KKJSearchNotifier:
         notification_config = self.config['notification']
         
         # メール本文の作成
-        body = f"新規案件が {len(new_items)} 件見つかりました。\n\n"
+        now = datetime.now().strftime('%Y年%m月%d日 %H:%M')
+        body = f"""
+官公需情報検索システムより新規案件のお知らせです。
+
+検索日時: {now}
+機関名: {self.config['organization']}
+新規案件数: {len(new_items)} 件
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ 新規案件詳細
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
         
-        for item in new_items:
-            body += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            body += f"件名: {item['project_name']}\n"
-            body += f"機関名: {item['organization_name']}\n"
-            body += f"カテゴリ: {item['category']}\n"
-            body += f"公示種別: {item['procedure_type']}\n"
-            body += f"公告日: {item['cft_issue_date']}\n"
-            body += f"入札開始日: {item['tender_submission_deadline']}\n"
-            body += f"開札日: {item['opening_tenders_event']}\n"
-            body += f"履行場所: {item['location']}\n"
-            body += f"URL: {item['external_document_uri']}\n"
+        for i, item in enumerate(new_items, 1):
+            body += f"\n【案件 {i}】\n"
+            body += f"件名: {item['project_name'] or '不明'}\n"
+            body += f"機関名: {item['organization_name'] or '不明'}\n"
+            body += f"カテゴリ: {item['category'] or '不明'}\n"
+            body += f"公示種別: {item['procedure_type'] or '不明'}\n"
+            body += f"公告日: {item['cft_issue_date'] or '不明'}\n"
+            
+            if item['tender_submission_deadline']:
+                body += f"入札開始日: {item['tender_submission_deadline']}\n"
+            if item['opening_tenders_event']:
+                body += f"開札日: {item['opening_tenders_event']}\n"
+            if item['period_end_time']:
+                body += f"納入期限: {item['period_end_time']}\n"
+            if item['location']:
+                body += f"履行場所: {item['location']}\n"
+                
+            body += f"URL: {item['external_document_uri'] or '不明'}\n"
             body += f"検索キーワード: {item['search_keyword']}\n"
-            body += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            body += f"─" * 40 + "\n"
+        
+        body += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+このメールは自動送信です。
+官公需情報ポータルサイト: http://www.kkj.go.jp/
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
         
         # メール送信
         msg = MIMEMultipart()
-        msg['From'] = notification_config['from_email']
+        
+        # 送信者名の設定
+        from_name = notification_config.get('from_name', '')
+        if from_name:
+            msg['From'] = formataddr((from_name, notification_config['from_email']))
+        else:
+            msg['From'] = notification_config['from_email']
+            
         msg['To'] = ', '.join(notification_config['to_emails'])
         msg['Subject'] = notification_config['subject']
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
