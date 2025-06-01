@@ -55,7 +55,8 @@ class KKJSearchNotifier:
                     "from_email": "your_email@example.com",
                     "from_name": "官公需情報システム",
                     "to_emails": ["recipient@example.com"],
-                    "subject": "【官公需】新規案件通知"
+                    "subject": "【官公需】新規案件通知",
+                    "max_items_per_mail": 50
                 }
             }
             with open(config_file, 'w', encoding='utf-8') as f:
@@ -220,6 +221,18 @@ class KKJSearchNotifier:
         smtp_config = self.config['smtp']
         notification_config = self.config['notification']
         
+        # メール1通あたりの最大案件数を取得（デフォルト: 50件）
+        max_items = notification_config.get('max_items_per_mail', 50)
+        
+        # 案件数が多い場合は制限
+        if len(new_items) > max_items:
+            logger.warning(f"新規案件が{len(new_items)}件と多いため、最初の{max_items}件のみ通知します")
+            items_to_send = new_items[:max_items]
+            remaining = len(new_items) - max_items
+        else:
+            items_to_send = new_items
+            remaining = 0
+        
         # メール本文の作成
         now = datetime.now().strftime('%Y年%m月%d日 %H:%M')
         body = f"""
@@ -227,14 +240,21 @@ class KKJSearchNotifier:
 
 検索日時: {now}
 機関名: {self.config['organization']}
-新規案件数: {len(new_items)} 件
+新規案件数: {len(new_items)} 件"""
+
+        if remaining > 0:
+            body += f"\n※ 案件数が多いため、最初の{max_items}件のみ表示します。（残り{remaining}件）"
+        else:
+            body += f"\n表示案件数: {len(items_to_send)} 件"
+
+        body += """
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ 新規案件詳細
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
         
-        for i, item in enumerate(new_items, 1):
+        for i, item in enumerate(items_to_send, 1):
             body += f"\n【案件 {i}】\n"
             body += f"件名: {item['project_name'] or '不明'}\n"
             body += f"機関名: {item['organization_name'] or '不明'}\n"
@@ -277,20 +297,32 @@ class KKJSearchNotifier:
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
         
         try:
+            logger.info(f"メール送信を開始します: {len(new_items)} 件")
+            
+            # タイムアウトを設定（30秒）
             if smtp_config['use_tls']:
-                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'])
+                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
                 server.starttls()
             else:
-                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'])
+                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
             
+            logger.info("SMTPサーバーに接続しました")
             server.login(smtp_config['username'], smtp_config['password'])
+            logger.info("SMTPサーバーにログインしました")
+            
             server.send_message(msg)
             server.quit()
             
             logger.info(f"メール通知を送信しました: {len(new_items)} 件")
             
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP認証エラー: ユーザー名またはパスワードが正しくありません - {str(e)}")
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"SMTP接続エラー: サーバーに接続できません - {str(e)}")
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTPエラー: {str(e)}")
         except Exception as e:
-            logger.error(f"メール送信エラー: {str(e)}")
+            logger.error(f"メール送信エラー: {type(e).__name__} - {str(e)}")
     
     def run(self):
         """メイン処理"""
@@ -324,5 +356,23 @@ class KKJSearchNotifier:
         logger.info(f"処理完了: 全新規案件 {len(all_new_items)} 件")
 
 if __name__ == "__main__":
-    notifier = KKJSearchNotifier()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='官公需情報検索・通知システム')
+    parser.add_argument('--no-mail', action='store_true', 
+                       help='メール送信をスキップ（テスト用）')
+    parser.add_argument('--config', default='config.json',
+                       help='設定ファイルのパス（デフォルト: config.json）')
+    
+    args = parser.parse_args()
+    
+    # システムを初期化
+    notifier = KKJSearchNotifier(args.config)
+    
+    # メール送信を無効化（テスト用）
+    if args.no_mail:
+        logger.info("メール送信は無効化されています（テストモード）")
+        notifier.send_notification = lambda x: logger.info(f"メール送信をスキップ: {len(x)} 件")
+    
+    # 実行
     notifier.run()

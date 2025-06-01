@@ -24,6 +24,7 @@
     "to_emails": [
       "RECIPIENT_EMAIL"
     ],
-    "subject": "【官公需】防衛省 新規案件通知"
+    "subject": "【官公需】防衛省 新規案件通知",
+    "max_items_per_mail": 50
   }
 }
