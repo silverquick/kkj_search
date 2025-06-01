@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+.pyenv
+
+# 機密情報を含むファイル
+config.json
+config.*.json
+
+# データベース
+*.db
+*.sqlite
+*.sqlite3
+
+# ログファイル
+*.log
+logs/
+
+# バックアップファイル
+*.bak
+*.backup
+*~
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# プロジェクト固有
+.python-version
+cron.log
+maintenance.log
+stats.log
+
+# テスト関連
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 一時ファイル
+*.tmp
+temp/
+tmp/

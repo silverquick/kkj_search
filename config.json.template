@@ -1,0 +1,28 @@
+{
+  "organization": "防衛省",
+  "keywords": [
+    "サイバー",
+    "セキュリティ",
+    "構築",
+    "システム",
+    "調査",
+    "研究"
+  ],
+  "database": {
+    "path": "kkj_search.db"
+  },
+  "smtp": {
+    "server": "YOUR_SMTP_SERVER",
+    "port": 587,
+    "use_tls": true,
+    "username": "YOUR_EMAIL",
+    "password": "YOUR_PASSWORD"
+  },
+  "notification": {
+    "from_email": "YOUR_EMAIL",
+    "to_emails": [
+      "RECIPIENT_EMAIL"
+    ],
+    "subject": "【官公需】防衛省 新規案件通知"
+  }
+}
