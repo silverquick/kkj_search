@@ -102,12 +102,12 @@ class KKJSearchNotifier:
         """APIで検索を実行"""
         params = {
             'Organization_Name': self.config['organization'],
-            'Query': keyword,
+            'Project_Name': keyword,  # 件名での検索に変更
             'Count': 100  # 最大100件取得
         }
         
         try:
-            logger.info(f"検索実行: 機関名={self.config['organization']}, キーワード={keyword}")
+            logger.info(f"検索実行: 機関名={self.config['organization']}, 件名キーワード={keyword}")
             response = requests.get(self.api_url, params=params, timeout=30)
             response.encoding = 'utf-8'
             
@@ -300,6 +300,41 @@ class KKJSearchNotifier:
             logger.info(f"メール送信を開始します: {len(new_items)} 件")
             
             # タイムアウトを設定（30秒）
+            if smtp_config.get('use_ssl', False):
+                # SSL接続（ポート465用）
+                logger.info(f"SSL接続を使用: {smtp_config['server']}:{smtp_config['port']}")
+                server = smtplib.SMTP_SSL(smtp_config['server'], smtp_config['port'], timeout=30)
+            elif smtp_config.get('use_tls', True):
+                # STARTTLS接続（ポート587用）
+                logger.info(f"STARTTLS接続を使用: {smtp_config['server']}:{smtp_config['port']}")
+                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
+                server.starttls()
+            else:
+                # 非暗号化接続
+                logger.info(f"非暗号化接続を使用: {smtp_config['server']}:{smtp_config['port']}")
+                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
+            
+            logger.info("SMTPサーバーに接続しました")
+            server.login(smtp_config['username'], smtp_config['password'])
+            logger.info("SMTPサーバーにログインしました")
+            
+            server.send_message(msg)
+            server.quit()
+            
+            logger.info(f"メール通知を送信しました: {len(new_items)} 件")
+            
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP認証エラー: ユーザー名またはパスワードが正しくありません - {str(e)}")
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"SMTP接続エラー: サーバーに接続できません - {str(e)}")
+        except smtplib.SMTPServerDisconnected as e:
+            logger.error(f"SMTPサーバー切断: {str(e)}")
+        except socket.timeout as e:
+            logger.error(f"接続タイムアウト: {str(e)}")
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTPエラー: {str(e)}")
+        except Exception as e:
+            logger.error(f"メール送信エラー: {type(e).__name__} - {str(e)}")
             if smtp_config['use_tls']:
                 server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
                 server.starttls()
@@ -354,6 +389,159 @@ class KKJSearchNotifier:
             self.send_notification(all_new_items)
         
         logger.info(f"処理完了: 全新規案件 {len(all_new_items)} 件")
+    
+    def test_mail(self):
+        """メール送信テスト"""
+        logger.info("メール送信テストを開始します")
+        
+        # テスト用のダミーデータを作成
+        test_items = [
+            {
+                'key': 'TEST_001',
+                'project_name': '【テスト】これはテストメールです - サイバーセキュリティシステム構築',
+                'organization_name': '【テスト】防衛省',
+                'cft_issue_date': datetime.now().strftime('%Y-%m-%d'),
+                'category': 'テスト案件',
+                'procedure_type': 'テスト入札',
+                'location': 'テスト実施場所',
+                'tender_submission_deadline': '2025-12-31',
+                'opening_tenders_event': '2025-12-31',
+                'period_end_time': '2025-12-31',
+                'external_document_uri': 'https://example.com/test-document-001',
+                'file_type': 'test',
+                'file_size': 12345,
+                'search_keyword': 'テストキーワード'
+            },
+            {
+                'key': 'TEST_002',
+                'project_name': '【テスト】ダミー案件 - ネットワークセキュリティ調査',
+                'organization_name': '【テスト】防衛省',
+                'cft_issue_date': datetime.now().strftime('%Y-%m-%d'),
+                'category': 'テスト役務',
+                'procedure_type': 'テスト公募',
+                'location': None,  # 欠損データのテスト
+                'tender_submission_deadline': None,
+                'opening_tenders_event': '2025-12-25',
+                'period_end_time': None,
+                'external_document_uri': 'https://example.com/test-document-002',
+                'file_type': 'test',
+                'file_size': None,
+                'search_keyword': 'テスト検索'
+            }
+        ]
+        
+        # テストメールを送信
+        try:
+            self.send_test_notification(test_items)
+            logger.info("テストメールの送信に成功しました")
+        except Exception as e:
+            logger.error(f"テストメールの送信に失敗しました: {str(e)}")
+            raise
+    
+    def send_test_notification(self, test_items):
+        """テスト用メール通知"""
+        smtp_config = self.config['smtp']
+        notification_config = self.config['notification']
+        
+        # メール本文の作成
+        now = datetime.now().strftime('%Y年%m月%d日 %H:%M')
+        body = f"""
+【テストメール】官公需情報検索システム
+
+これはメール送信機能のテストメールです。
+実際の案件情報ではありません。
+
+テスト実行日時: {now}
+機関名: {self.config['organization']}
+テスト案件数: {len(test_items)} 件
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ テスト案件詳細（ダミーデータ）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+        
+        for i, item in enumerate(test_items, 1):
+            body += f"\n【テスト案件 {i}】\n"
+            body += f"件名: {item['project_name'] or '不明'}\n"
+            body += f"機関名: {item['organization_name'] or '不明'}\n"
+            body += f"カテゴリ: {item['category'] or '不明'}\n"
+            body += f"公示種別: {item['procedure_type'] or '不明'}\n"
+            body += f"公告日: {item['cft_issue_date'] or '不明'}\n"
+            
+            if item['tender_submission_deadline']:
+                body += f"入札開始日: {item['tender_submission_deadline']}\n"
+            if item['opening_tenders_event']:
+                body += f"開札日: {item['opening_tenders_event']}\n"
+            if item['period_end_time']:
+                body += f"納入期限: {item['period_end_time']}\n"
+            if item['location']:
+                body += f"履行場所: {item['location']}\n"
+                
+            body += f"URL: {item['external_document_uri'] or '不明'}\n"
+            body += f"検索キーワード: {item['search_keyword']}\n"
+            body += f"─" * 40 + "\n"
+        
+        body += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【重要】これはテストメールです。
+実際の入札案件ではありませんのでご注意ください。
+
+メール送信設定:
+- SMTPサーバー: {smtp_config['server']}:{smtp_config['port']}
+- TLS: {'有効' if smtp_config['use_tls'] else '無効'}
+- 送信元: {notification_config['from_email']}
+- 送信先: {', '.join(notification_config['to_emails'])}
+
+このメールが正常に受信できていれば、
+メール送信機能は正しく設定されています。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+        
+        # メール送信
+        msg = MIMEMultipart()
+        
+        # 送信者名の設定
+        from_name = notification_config.get('from_name', '')
+        if from_name:
+            msg['From'] = formataddr((from_name, notification_config['from_email']))
+        else:
+            msg['From'] = notification_config['from_email']
+            
+        msg['To'] = ', '.join(notification_config['to_emails'])
+        msg['Subject'] = '【テスト】' + notification_config['subject']
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+        
+        try:
+            logger.info(f"テストメール送信を開始します")
+            
+            # タイムアウトを設定（30秒）
+            if smtp_config['use_tls']:
+                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
+                server.starttls()
+            else:
+                server = smtplib.SMTP(smtp_config['server'], smtp_config['port'], timeout=30)
+            
+            logger.info("SMTPサーバーに接続しました")
+            server.login(smtp_config['username'], smtp_config['password'])
+            logger.info("SMTPサーバーにログインしました")
+            
+            server.send_message(msg)
+            server.quit()
+            
+            logger.info(f"テストメールを送信しました")
+            
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP認証エラー: ユーザー名またはパスワードが正しくありません - {str(e)}")
+            raise
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"SMTP接続エラー: サーバーに接続できません - {str(e)}")
+            raise
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTPエラー: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"メール送信エラー: {type(e).__name__} - {str(e)}")
+            raise
 
 if __name__ == "__main__":
     import argparse
@@ -361,6 +549,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='官公需情報検索・通知システム')
     parser.add_argument('--no-mail', action='store_true', 
                        help='メール送信をスキップ（テスト用）')
+    parser.add_argument('--test-mail', action='store_true',
+                       help='テストメールを送信（メール設定の確認用）')
     parser.add_argument('--config', default='config.json',
                        help='設定ファイルのパス（デフォルト: config.json）')
     
@@ -369,10 +559,17 @@ if __name__ == "__main__":
     # システムを初期化
     notifier = KKJSearchNotifier(args.config)
     
+    # テストメール送信モード
+    if args.test_mail:
+        logger.info("=== テストメール送信モード ===")
+        notifier.test_mail()
+        logger.info("=== テストメール送信完了 ===")
+        sys.exit(0)
+    
     # メール送信を無効化（テスト用）
     if args.no_mail:
         logger.info("メール送信は無効化されています（テストモード）")
         notifier.send_notification = lambda x: logger.info(f"メール送信をスキップ: {len(x)} 件")
     
-    # 実行
+    # 通常実行
     notifier.run()

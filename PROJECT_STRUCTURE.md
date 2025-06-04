@@ -16,6 +16,9 @@
 ├── maintenance.log        # メンテナンスログ
 ├── README.md              # セットアップガイド
 ├── PROJECT_STRUCTURE.md   # このファイル
+├── TROUBLESHOOTING.md     # トラブルシューティングガイド
+├── EMAIL_SAMPLE.txt       # 通常メールのサンプル
+├── TEST_EMAIL_SAMPLE.txt  # テストメールのサンプル
 └── .python-version        # pyenv環境指定ファイル（自動生成）
 ```
 

@@ -8,6 +8,7 @@
     "調査",
     "研究"
   ],
+  "keyword_note": "※キーワードは件名に対してのみ検索されます（前後方・途中一致）",
   "database": {
     "path": "kkj_search.db"
   },
