@@ -26,6 +26,8 @@
       "RECIPIENT_EMAIL"
     ],
     "subject": "【官公需】防衛省 新規案件通知",
-    "max_items_per_mail": 50
-  }
+    "max_items_per_mail": 50,
+    "always_notify": true
+  },
+  "notification_note": "※ always_notify: true の場合、新規案件がなくても通知メールを送信します"
 }
