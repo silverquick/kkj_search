@@ -15,6 +15,22 @@ python kkj_search.py [オプション]
 | `--config FILE` | 設定ファイルを指定 | `python kkj_search.py --config config.prod.json` |
 | `--help` | ヘルプを表示 | `python kkj_search.py --help` |
 
+## メール通知の動作
+
+### 新規案件がある場合
+- 案件の詳細情報を含むメールを送信
+- 最大表示件数は `max_items_per_mail` で制限
+
+### 新規案件がない場合
+- 「新規案件はありませんでした」という通知メールを送信
+- 検索は実行されたが新規案件がなかったことを明示
+
+### メール通知を無効化する場合
+```bash
+# 検索は実行するがメールは送信しない
+python kkj_search.py --no-mail
+```
+
 ## 典型的な使用シナリオ
 
 ### 1. 初期セットアップ時
@@ -57,11 +73,14 @@ python kkj_search.py 2>&1 | tee debug.log
 
 ```bash
 # crontabの設定例
-# 毎日9時にメールなしで実行（ログ収集のみ）
-0 9 * * * cd /path/to/project && python kkj_search.py --no-mail >> daily.log 2>&1
+# 毎日9時に実行（新規案件の有無に関わらず通知）
+0 9 * * * /path/to/project/run_kkj_search.sh
 
 # 平日17時に通常実行
 0 17 * * 1-5 /path/to/project/run_kkj_search.sh
+
+# メール通知なしで実行（ログ収集のみ）
+0 * * * * cd /path/to/project && python kkj_search.py --no-mail >> hourly.log 2>&1
 ```
 
 ## 複数環境での運用

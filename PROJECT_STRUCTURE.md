@@ -17,7 +17,9 @@
 ├── README.md              # セットアップガイド
 ├── PROJECT_STRUCTURE.md   # このファイル
 ├── TROUBLESHOOTING.md     # トラブルシューティングガイド
+├── SEARCH_METHOD.md       # 検索方法の説明
 ├── EMAIL_SAMPLE.txt       # 通常メールのサンプル
+├── NO_ITEMS_EMAIL_SAMPLE.txt  # 新規案件なしメールのサンプル
 ├── TEST_EMAIL_SAMPLE.txt  # テストメールのサンプル
 └── .python-version        # pyenv環境指定ファイル（自動生成）
 ```

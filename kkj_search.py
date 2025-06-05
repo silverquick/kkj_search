@@ -214,68 +214,94 @@ class KKJSearchNotifier:
         return new_items
     
     def send_notification(self, new_items):
-        """新規案件をメール通知"""
-        if not new_items:
-            return
-            
+        """新規案件をメール通知（案件がない場合も通知）"""
         smtp_config = self.config['smtp']
         notification_config = self.config['notification']
         
-        # メール1通あたりの最大案件数を取得（デフォルト: 50件）
-        max_items = notification_config.get('max_items_per_mail', 50)
-        
-        # 案件数が多い場合は制限
-        if len(new_items) > max_items:
-            logger.warning(f"新規案件が{len(new_items)}件と多いため、最初の{max_items}件のみ通知します")
-            items_to_send = new_items[:max_items]
-            remaining = len(new_items) - max_items
-        else:
-            items_to_send = new_items
-            remaining = 0
-        
         # メール本文の作成
         now = datetime.now().strftime('%Y年%m月%d日 %H:%M')
-        body = f"""
+        
+        if not new_items:
+            # 新規案件がない場合
+            body = f"""
+官公需情報検索システムより検索結果のお知らせです。
+
+検索日時: {now}
+機関名: {self.config['organization']}
+検索キーワード: {', '.join(self.config['keywords'])}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+■ 検索結果
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+新規案件はありませんでした。
+
+指定されたキーワードに該当する新しい入札案件は
+見つかりませんでした。
+
+※ 既に登録済みの案件は除外されています。
+※ キーワードは件名に対してのみ検索されます。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+このメールは自動送信です。
+官公需情報ポータルサイト: http://www.kkj.go.jp/
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
+        else:
+            # 新規案件がある場合
+            # メール1通あたりの最大案件数を取得（デフォルト: 50件）
+            max_items = notification_config.get('max_items_per_mail', 50)
+            
+            # 案件数が多い場合は制限
+            if len(new_items) > max_items:
+                logger.warning(f"新規案件が{len(new_items)}件と多いため、最初の{max_items}件のみ通知します")
+                items_to_send = new_items[:max_items]
+                remaining = len(new_items) - max_items
+            else:
+                items_to_send = new_items
+                remaining = 0
+            
+            body = f"""
 官公需情報検索システムより新規案件のお知らせです。
 
 検索日時: {now}
 機関名: {self.config['organization']}
 新規案件数: {len(new_items)} 件"""
 
-        if remaining > 0:
-            body += f"\n※ 案件数が多いため、最初の{max_items}件のみ表示します。（残り{remaining}件）"
-        else:
-            body += f"\n表示案件数: {len(items_to_send)} 件"
+            if remaining > 0:
+                body += f"\n※ 案件数が多いため、最初の{max_items}件のみ表示します。（残り{remaining}件）"
+            else:
+                body += f"\n表示案件数: {len(items_to_send)} 件"
 
-        body += """
+            body += """
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ■ 新規案件詳細
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
-        
-        for i, item in enumerate(items_to_send, 1):
-            body += f"\n【案件 {i}】\n"
-            body += f"件名: {item['project_name'] or '不明'}\n"
-            body += f"機関名: {item['organization_name'] or '不明'}\n"
-            body += f"カテゴリ: {item['category'] or '不明'}\n"
-            body += f"公示種別: {item['procedure_type'] or '不明'}\n"
-            body += f"公告日: {item['cft_issue_date'] or '不明'}\n"
             
-            if item['tender_submission_deadline']:
-                body += f"入札開始日: {item['tender_submission_deadline']}\n"
-            if item['opening_tenders_event']:
-                body += f"開札日: {item['opening_tenders_event']}\n"
-            if item['period_end_time']:
-                body += f"納入期限: {item['period_end_time']}\n"
-            if item['location']:
-                body += f"履行場所: {item['location']}\n"
+            for i, item in enumerate(items_to_send, 1):
+                body += f"\n【案件 {i}】\n"
+                body += f"件名: {item['project_name'] or '不明'}\n"
+                body += f"機関名: {item['organization_name'] or '不明'}\n"
+                body += f"カテゴリ: {item['category'] or '不明'}\n"
+                body += f"公示種別: {item['procedure_type'] or '不明'}\n"
+                body += f"公告日: {item['cft_issue_date'] or '不明'}\n"
                 
-            body += f"URL: {item['external_document_uri'] or '不明'}\n"
-            body += f"検索キーワード: {item['search_keyword']}\n"
-            body += f"─" * 40 + "\n"
-        
-        body += f"""
+                if item['tender_submission_deadline']:
+                    body += f"入札開始日: {item['tender_submission_deadline']}\n"
+                if item['opening_tenders_event']:
+                    body += f"開札日: {item['opening_tenders_event']}\n"
+                if item['period_end_time']:
+                    body += f"納入期限: {item['period_end_time']}\n"
+                if item['location']:
+                    body += f"履行場所: {item['location']}\n"
+                    
+                body += f"URL: {item['external_document_uri'] or '不明'}\n"
+                body += f"検索キーワード: {item['search_keyword']}\n"
+                body += f"─" * 40 + "\n"
+            
+            body += f"""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 このメールは自動送信です。
 官公需情報ポータルサイト: http://www.kkj.go.jp/
@@ -297,7 +323,10 @@ class KKJSearchNotifier:
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
         
         try:
-            logger.info(f"メール送信を開始します: {len(new_items)} 件")
+            if new_items:
+                logger.info(f"メール送信を開始します: 新規案件 {len(new_items)} 件")
+            else:
+                logger.info(f"メール送信を開始します: 新規案件なし（通知のみ）")
             
             # タイムアウトを設定（30秒）
             if smtp_config.get('use_ssl', False):
@@ -321,7 +350,10 @@ class KKJSearchNotifier:
             server.send_message(msg)
             server.quit()
             
-            logger.info(f"メール通知を送信しました: {len(new_items)} 件")
+            if new_items:
+                logger.info(f"メール通知を送信しました: 新規案件 {len(new_items)} 件")
+            else:
+                logger.info(f"メール通知を送信しました: 新規案件なし")
             
         except smtplib.SMTPAuthenticationError as e:
             logger.error(f"SMTP認証エラー: ユーザー名またはパスワードが正しくありません - {str(e)}")
@@ -362,6 +394,7 @@ class KKJSearchNotifier:
     def run(self):
         """メイン処理"""
         all_new_items = []
+        total_searched = 0
         
         for keyword in self.config['keywords']:
             logger.info(f"キーワード '{keyword}' で検索開始")
@@ -374,6 +407,7 @@ class KKJSearchNotifier:
             # 結果をパース
             results = self.parse_xml_results(xml_data, keyword)
             logger.info(f"検索結果: {len(results)} 件")
+            total_searched += len(results)
             
             # データベースに保存
             new_items = self.save_to_database(results)
@@ -384,11 +418,9 @@ class KKJSearchNotifier:
             # API負荷対策のため少し待機
             time.sleep(1)
         
-        # 新規案件があればメール通知
-        if all_new_items:
-            self.send_notification(all_new_items)
-        
-        logger.info(f"処理完了: 全新規案件 {len(all_new_items)} 件")
+        # 検索結果に関わらず通知メールを送信
+        logger.info(f"処理完了: 検索総数 {total_searched} 件, 新規案件 {len(all_new_items)} 件")
+        self.send_notification(all_new_items)
     
     def test_mail(self):
         """メール送信テスト"""
@@ -569,7 +601,12 @@ if __name__ == "__main__":
     # メール送信を無効化（テスト用）
     if args.no_mail:
         logger.info("メール送信は無効化されています（テストモード）")
-        notifier.send_notification = lambda x: logger.info(f"メール送信をスキップ: {len(x)} 件")
+        def skip_notification(items):
+            if items:
+                logger.info(f"メール送信をスキップ: 新規案件 {len(items)} 件")
+            else:
+                logger.info(f"メール送信をスキップ: 新規案件なし")
+        notifier.send_notification = skip_notification
     
     # 通常実行
     notifier.run()
