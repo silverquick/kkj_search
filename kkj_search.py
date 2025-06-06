@@ -14,6 +14,8 @@ import os
 import logging
 import time
 import sys
+import tempfile
+import openai
 
 # ログ設定
 logging.basicConfig(
@@ -32,6 +34,15 @@ class KKJSearchNotifier:
         self.config = self.load_config(config_file)
         self.api_url = "http://www.kkj.go.jp/api/"
         self.db_path = self.config['database']['path']
+        self.openai_api_key = self.config.get('openai', {}).get('api_key')
+        self.openai_model = self.config.get('openai', {}).get('model', 'gpt-4o')
+        self.openai_client = None
+        if self.openai_api_key:
+            openai.api_key = self.openai_api_key
+            try:
+                self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
+            except Exception as e:
+                logger.error(f"OpenAIクライアント初期化エラー: {e}")
         self.init_database()
         
     def load_config(self, config_file):
@@ -177,6 +188,60 @@ class KKJSearchNotifier:
                     return None
             return tag.text
         return None
+
+    def summarize_url(self, url):
+        """URLの内容をChatGPTで要約 (PDFにも対応)"""
+        if not url or not self.openai_api_key or not self.openai_client:
+            return None
+        try:
+            response = requests.get(url, timeout=30)
+            if response.status_code != 200:
+                logger.warning(f"要約用にURLを取得できません: {url}")
+                return None
+
+            content_type = response.headers.get("Content-Type", "").lower()
+            is_pdf = "application/pdf" in content_type or url.lower().endswith(".pdf")
+
+            if is_pdf:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                    tmp.write(response.content)
+                    tmp_path = tmp.name
+                try:
+                    upload = self.openai_client.files.create(
+                        file=open(tmp_path, "rb"),
+                        purpose="assistants",
+                    )
+                    messages = [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "以下のPDFの内容を日本語で100文字程度に要約してください。"},
+                                {"type": "file", "file_id": upload.id},
+                            ],
+                        }
+                    ]
+                    result = self.openai_client.chat.completions.create(
+                        model=self.openai_model,
+                        messages=messages,
+                        max_tokens=200,
+                    )
+                    return result.choices[0].message.content.strip()
+                finally:
+                    os.remove(tmp_path)
+            else:
+                text = response.text[:4000]
+                prompt = (
+                    "以下のHTMLの内容を日本語で100文字程度に要約してください。\n" + text
+                )
+                result = self.openai_client.chat.completions.create(
+                    model=self.openai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=200,
+                )
+                return result.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error(f"ChatGPT要約エラー: {e}")
+            return None
     
     def save_to_database(self, results):
         """検索結果をデータベースに保存"""
@@ -298,6 +363,9 @@ class KKJSearchNotifier:
                     body += f"履行場所: {item['location']}\n"
                     
                 body += f"URL: {item['external_document_uri'] or '不明'}\n"
+                summary = self.summarize_url(item['external_document_uri'])
+                if summary:
+                    body += f"概要: {summary}\n"
                 body += f"検索キーワード: {item['search_keyword']}\n"
                 body += f"─" * 40 + "\n"
             

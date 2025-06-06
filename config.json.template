@@ -29,5 +29,9 @@
     "max_items_per_mail": 50,
     "always_notify": true
   },
-  "notification_note": "※ always_notify: true の場合、新規案件がなくても通知メールを送信します"
+  "notification_note": "※ always_notify: true の場合、新規案件がなくても通知メールを送信します",
+  "openai": {
+    "api_key": "YOUR_OPENAI_API_KEY",
+    "model": "gpt-4o"
+  }
 }

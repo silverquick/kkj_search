@@ -13,6 +13,7 @@
 - 🔄 定期実行対応（cron）
 - 🐍 Python仮想環境による環境分離（pyenv）
 - 📊 データベースメンテナンス機能
+- 🌐 ChatGPT-4oによる案件概要生成（URLやPDFの内容を自動要約）
 
 ## 必要要件
 
@@ -62,6 +63,7 @@ python kkj_search.py
 - **keywords**: 検索キーワードのリスト
 - **smtp**: メールサーバー設定
 - **notification**: 通知先メールアドレス
+- **openai**: ChatGPT API設定（任意）
 
 設定例：
 ```json
@@ -74,6 +76,10 @@ python kkj_search.py
     "use_tls": true,
     "username": "your_email@gmail.com",
     "password": "your_app_password"
+  },
+  "openai": {
+    "api_key": "YOUR_OPENAI_API_KEY",
+    "model": "gpt-4o"
   }
 }
 ```
