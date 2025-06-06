@@ -38,11 +38,12 @@ class KKJSearchNotifier:
         self.openai_model = self.config.get('openai', {}).get('model', 'gpt-4o')
         self.openai_client = None
         if self.openai_api_key:
-            openai.api_key = self.openai_api_key
             try:
                 self.openai_client = openai.OpenAI(api_key=self.openai_api_key)
+                logger.info("OpenAIクライアントを正常に初期化しました")
             except Exception as e:
                 logger.error(f"OpenAIクライアント初期化エラー: {e}")
+                logger.warning("OpenAI要約機能は無効化されます")
         self.init_database()
         
     def load_config(self, config_file):
@@ -191,8 +192,17 @@ class KKJSearchNotifier:
 
     def summarize_url(self, url):
         """URLの内容をChatGPTで要約 (PDFにも対応)"""
-        if not url or not self.openai_api_key or not self.openai_client:
+        if not url:
             return None
+        
+        if not self.openai_api_key:
+            logger.warning("OpenAI APIキーが設定されていません")
+            return None
+            
+        if not self.openai_client:
+            logger.warning("OpenAIクライアントが初期化されていません")
+            return None
+        
         try:
             response = requests.get(url, timeout=30)
             if response.status_code != 200:
@@ -203,31 +213,9 @@ class KKJSearchNotifier:
             is_pdf = "application/pdf" in content_type or url.lower().endswith(".pdf")
 
             if is_pdf:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                    tmp.write(response.content)
-                    tmp_path = tmp.name
-                try:
-                    upload = self.openai_client.files.create(
-                        file=open(tmp_path, "rb"),
-                        purpose="assistants",
-                    )
-                    messages = [
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "以下のPDFの内容を日本語で100文字程度に要約してください。"},
-                                {"type": "file", "file_id": upload.id},
-                            ],
-                        }
-                    ]
-                    result = self.openai_client.chat.completions.create(
-                        model=self.openai_model,
-                        messages=messages,
-                        max_tokens=200,
-                    )
-                    return result.choices[0].message.content.strip()
-                finally:
-                    os.remove(tmp_path)
+                # PDF要約は現在サポートされていません
+                logger.info(f"PDFファイルの要約はスキップします: {url}")
+                return "（PDFファイル - 要約非対応）"
             else:
                 text = response.text[:4000]
                 prompt = (
