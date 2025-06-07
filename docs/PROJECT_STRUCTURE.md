@@ -6,8 +6,6 @@
 ~/projects/kkj_search/
 ├── kkj_search.py           # メイン検索・通知スクリプト
 ├── kkj_maintenance.py      # データベースメンテナンススクリプト
-├── test_smtp_connection.py # SMTP接続診断ツール
-├── setup.sh               # 初期セットアップスクリプト
 ├── config.json            # 設定ファイル（config.json.templateから作成）
 ├── config.json.template   # 設定ファイルのテンプレート
 ├── requirements.txt       # Python依存パッケージリスト
@@ -19,18 +17,20 @@
 ├── cron.log               # cron実行ログ
 ├── maintenance.log        # メンテナンスログ
 ├── README.md              # セットアップガイド
-├── README_ORIGINAL.md     # オリジナルのREADME
-├── PROJECT_STRUCTURE.md   # このファイル
-├── TROUBLESHOOTING.md     # トラブルシューティングガイド
-├── SMTP_TROUBLESHOOT.md   # SMTP設定のトラブルシューティング
-├── SEARCH_METHOD.md       # 検索方法の説明
-├── USAGE_EXAMPLES.md      # 使用例とユースケース
-├── EMAIL_SAMPLE.txt       # 通常メールのサンプル
-├── NO_ITEMS_EMAIL_SAMPLE.txt  # 新規案件なしメールのサンプル
-├── TEST_EMAIL_SAMPLE.txt  # テストメールのサンプル
 ├── LICENSE                # ライセンスファイル
 ├── .gitignore            # Git除外設定
-└── .python-version        # pyenv環境指定ファイル（自動生成）
+├── .python-version        # pyenv環境指定ファイル（自動生成）
+├── docs/                  # ドキュメントフォルダ
+│   ├── README_ORIGINAL.md     # オリジナルのREADME
+│   ├── PROJECT_STRUCTURE.md   # このファイル
+│   ├── TROUBLESHOOTING.md     # トラブルシューティングガイド
+│   ├── SMTP_TROUBLESHOOT.md   # SMTP設定のトラブルシューティング
+│   ├── SEARCH_METHOD.md       # 検索方法の説明
+│   └── USAGE_EXAMPLES.md      # 使用例とユースケース
+└── samples/               # サンプルファイルフォルダ
+    ├── EMAIL_SAMPLE.txt       # 通常メールのサンプル
+    ├── NO_ITEMS_EMAIL_SAMPLE.txt  # 新規案件なしメールのサンプル
+    └── TEST_EMAIL_SAMPLE.txt  # テストメールのサンプル
 ```
 
 ## ファイル説明
@@ -48,15 +48,13 @@
    - データベースの最適化（VACUUM）
    - 統計情報の表示
 
-3. **test_smtp_connection.py**
-   - SMTP接続の診断
-   - 設定の検証
-   - テストメール送信機能
+3. **run_kkj_search.sh**
+   - cronから実行するためのラッパー
+   - pyenv環境を適切に読み込む
 
-4. **setup.sh**
-   - pyenv環境の自動セットアップ
-   - Python依存パッケージのインストール
-   - 初期設定ファイルの作成
+4. **run_kkj_maintenance.sh**
+   - メンテナンス処理用のラッパー
+   - 定期的なクリーンアップに使用
 
 ### 設定ファイル
 
@@ -79,32 +77,28 @@
    - crontab設定の例
    - 定期実行の設定方法を記載
 
-### シェルスクリプト
+### 設定ファイル（続き）
 
-9. **run_kkj_search.sh**
-   - cronから実行するためのラッパー
-   - pyenv環境を適切に読み込む
-
-10. **run_kkj_maintenance.sh**
-    - メンテナンス処理用のラッパー
-    - 定期的なクリーンアップに使用
+9. **crontab.example**
+   - crontab設定の例
+   - 定期実行の設定方法を記載
 
 ### データファイル
 
-11. **kkj_search.db**
+10. **kkj_search.db**
     - SQLiteデータベース
     - 検索結果を永続化
 
 ### ログファイル
 
-12. **kkj_search.log**
+11. **kkj_search.log**
     - メインスクリプトの実行ログ
     - エラー追跡に使用
 
-13. **cron.log**
+12. **cron.log**
     - cron経由での実行ログ
 
-14. **maintenance.log**
+13. **maintenance.log**
     - メンテナンス処理のログ
 
 ### ドキュメント
@@ -114,46 +108,46 @@
     - 使用方法
     - 基本的なトラブルシューティング
 
-16. **README_ORIGINAL.md**
+16. **docs/README_ORIGINAL.md**
     - オリジナルのREADME（参考資料）
 
-17. **PROJECT_STRUCTURE.md**
+17. **docs/PROJECT_STRUCTURE.md**
     - プロジェクト構造の説明（このファイル）
 
-18. **TROUBLESHOOTING.md**
+18. **docs/TROUBLESHOOTING.md**
     - 詳細なトラブルシューティングガイド
 
-19. **SMTP_TROUBLESHOOT.md**
+19. **docs/SMTP_TROUBLESHOOT.md**
     - SMTP設定に特化したトラブルシューティング
 
-20. **SEARCH_METHOD.md**
+20. **docs/SEARCH_METHOD.md**
     - 検索方法と仕様の詳細説明
 
-21. **USAGE_EXAMPLES.md**
+21. **docs/USAGE_EXAMPLES.md**
     - 実践的な使用例とユースケース
 
 ### サンプルファイル
 
-22. **EMAIL_SAMPLE.txt**
+22. **samples/EMAIL_SAMPLE.txt**
     - 新規案件がある場合の通知メールサンプル
 
-23. **NO_ITEMS_EMAIL_SAMPLE.txt**
+23. **samples/NO_ITEMS_EMAIL_SAMPLE.txt**
     - 新規案件がない場合の通知メールサンプル
 
-24. **TEST_EMAIL_SAMPLE.txt**
+24. **samples/TEST_EMAIL_SAMPLE.txt**
     - テストメール送信時のサンプル
 
 ### その他
 
-25. **LICENSE**
+14. **LICENSE**
     - プロジェクトのライセンス情報
 
-26. **.gitignore**
+15. **.gitignore**
     - Gitで管理しないファイルの設定
 
 ### 自動生成ファイル
 
-27. **.python-version**
+16. **.python-version**
     - pyenvが使用するPython環境指定
     - `pyenv local`コマンドで自動生成
 

@@ -118,13 +118,27 @@ python kkj_maintenance.py --stats
 kkj-search-system/
 ├── kkj_search.py           # メイン検索スクリプト
 ├── kkj_maintenance.py      # メンテナンススクリプト
+├── test_smtp_connection.py # SMTP接続診断ツール
 ├── setup.sh                # セットアップスクリプト
 ├── requirements.txt        # Python依存パッケージ
 ├── config.json.template    # 設定ファイルテンプレート
 ├── run_kkj_search.sh       # cron実行用ラッパー
 ├── run_kkj_maintenance.sh  # メンテナンス用ラッパー
-├── README.md               # ドキュメント
-└── .gitignore             # Git除外設定
+├── crontab.example        # crontab設定の例
+├── README.md              # このファイル
+├── LICENSE                # ライセンス
+├── .gitignore            # Git除外設定
+├── docs/                 # ドキュメント
+│   ├── PROJECT_STRUCTURE.md    # プロジェクト構造の詳細
+│   ├── TROUBLESHOOTING.md      # トラブルシューティング
+│   ├── SMTP_TROUBLESHOOT.md    # SMTP設定ガイド
+│   ├── SEARCH_METHOD.md        # 検索仕様の説明
+│   ├── USAGE_EXAMPLES.md       # 使用例
+│   └── README_ORIGINAL.md      # オリジナルREADME
+└── samples/              # サンプルファイル
+    ├── EMAIL_SAMPLE.txt        # 通知メールサンプル
+    ├── NO_ITEMS_EMAIL_SAMPLE.txt  # 案件なしメールサンプル
+    └── TEST_EMAIL_SAMPLE.txt   # テストメールサンプル
 ```
 
 ## API仕様
@@ -152,7 +166,7 @@ kkj-search-system/
 ### データベース
 - 権限エラー：`chmod 664 kkj_search.db`
 
-詳細は[README.md](README.md)を参照してください。
+詳細は[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)を参照してください。
 
 ## 貢献
 
