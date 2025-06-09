@@ -16,6 +16,8 @@ import time
 import sys
 import tempfile
 import openai
+from pypdf import PdfReader
+import io
 
 # ログ設定
 logging.basicConfig(
@@ -213,20 +215,51 @@ class KKJSearchNotifier:
             is_pdf = "application/pdf" in content_type or url.lower().endswith(".pdf")
 
             if is_pdf:
-                # PDF要約は現在サポートされていません
-                logger.info(f"PDFファイルの要約はスキップします: {url}")
-                return "（PDFファイル - 要約非対応）"
+                # PDFファイルからテキストを抽出
+                logger.info(f"PDFファイルからテキストを抽出します: {url}")
+                try:
+                    # PDFデータをメモリに読み込む
+                    pdf_file = io.BytesIO(response.content)
+                    pdf_reader = PdfReader(pdf_file)
+                    
+                    # 全ページのテキストを抽出
+                    text = ""
+                    for page_num, page in enumerate(pdf_reader.pages):
+                        page_text = page.extract_text()
+                        if page_text:
+                            text += page_text + "\n"
+                        # 最大10ページまで読み込む（大きすぎるPDFの場合）
+                        if page_num >= 9:
+                            logger.info(f"PDFが大きいため、最初の10ページのみ処理します")
+                            break
+                    
+                    if not text.strip():
+                        logger.warning(f"PDFからテキストを抽出できませんでした: {url}")
+                        return "（PDFファイル - テキスト抽出失敗）"
+                    
+                    # テキストが長すぎる場合は最初の4000文字に制限
+                    if len(text) > 4000:
+                        text = text[:4000]
+                        logger.info(f"PDFテキストが長いため、最初の4000文字のみ使用します")
+                    
+                    prompt = (
+                        "以下は官公需の入札案件PDFから抽出したテキストです。"
+                        "入札案件の概要を日本語で100文字程度に要約してください。\n\n" + text
+                    )
+                    result = self.openai_client.chat.completions.create(
+                        model=self.openai_model,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=200,
+                    )
+                    return result.choices[0].message.content.strip()
+                    
+                except Exception as pdf_error:
+                    logger.error(f"PDF処理エラー: {pdf_error}")
+                    return "（PDFファイル - 処理エラー）"
             else:
-                text = response.text[:4000]
-                prompt = (
-                    "以下のHTMLの内容を日本語で100文字程度に要約してください。\n" + text
-                )
-                result = self.openai_client.chat.completions.create(
-                    model=self.openai_model,
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=200,
-                )
-                return result.choices[0].message.content.strip()
+                # HTMLの場合は要約しない（ポータルサイトの可能性が高いため）
+                logger.info(f"HTMLファイルの要約はスキップします: {url}")
+                return None
         except Exception as e:
             logger.error(f"ChatGPT要約エラー: {e}")
             return None
