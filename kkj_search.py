@@ -242,14 +242,29 @@ class KKJSearchNotifier:
                         text = text[:4000]
                         logger.info(f"PDFテキストが長いため、最初の4000文字のみ使用します")
                     
-                    prompt = (
-                        "以下は官公需の入札案件PDFから抽出したテキストです。"
-                        "入札案件の概要を日本語で100文字程度に要約してください。\n\n" + text
-                    )
+                    prompt = f"""以下は官公需の入札案件PDFから抽出したテキストです。
+以下に従い、情報を抽出してください。ただし、Markdown形式にせず、各項目は：の後に出力し、改行するにととどめてください。
+例えば次のように出力します。
+「案件の概要：〜〜〜
+履行期間：〜〜〜
+要求元：〜〜〜」
+また、以下の通り各項目を抽出しました、等の説明は不要です。各項目の抽出だけ行ってください。
+抽出する情報は下記のとおりです。
+・案件の概要
+・履行期間
+・要求元
+・入札方式
+・参加表明期限
+・履行体制に関する資料提出期限
+・提案書などの提出期限
+・入札日時
+・入札制限の記載
+
+{text}"""
                     result = self.openai_client.chat.completions.create(
                         model=self.openai_model,
                         messages=[{"role": "user", "content": prompt}],
-                        max_tokens=200,
+                        max_tokens=400,
                     )
                     return result.choices[0].message.content.strip()
                     
