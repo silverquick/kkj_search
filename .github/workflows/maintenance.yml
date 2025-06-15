@@ -26,16 +26,7 @@ jobs:
     - name: Create config file
       run: |
         # Create minimal config for maintenance
-        python -c "
-import json
-config = {
-    'database': {
-        'path': 'kkj_search.db'
-    }
-}
-with open('config.json', 'w') as f:
-    json.dump(config, f, indent=2)
-"
+        python -c "import json; config = {'database': {'path': 'kkj_search.db'}}; json.dump(config, open('config.json', 'w'), indent=2)"
     
     - name: Run maintenance
       run: |
