@@ -52,7 +52,7 @@ jobs:
         fi
     
     - name: Test SMTP connection
-      if: ${{ secrets.SMTP_SERVER }}
+      if: ${{ secrets.SMTP_SERVER != '' }}
       run: |
         python test_smtp_connection.py --no-send
       continue-on-error: true
