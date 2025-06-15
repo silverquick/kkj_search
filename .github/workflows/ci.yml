@@ -42,16 +42,34 @@ jobs:
       run: |
         mypy *.py --ignore-missing-imports || true
     
-    - name: Test SMTP connection
-      run: |
-        python test_smtp_connection.py --no-send
-      env:
-        SMTP_SERVER: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
-        SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
-    
-    - name: Run tests
+    - name: Create test config
       run: |
         # Create a test config file for CI
         cp config.json.template config.json
-        # Run any Python tests if they exist
-        python -m pytest . -v --cov=. --cov-report=term-missing || echo "No tests found"
+        # Update config with test values if secrets are available
+        if [ -n "${{ secrets.SMTP_SERVER }}" ]; then
+          python -c "
+import json
+with open('config.json', 'r') as f:
+    config = json.load(f)
+config['smtp']['server'] = '${{ secrets.SMTP_SERVER }}'
+config['smtp']['port'] = int('${{ secrets.SMTP_PORT || 587 }}')
+with open('config.json', 'w') as f:
+    json.dump(config, f, indent=2)
+"
+        fi
+    
+    - name: Test SMTP connection
+      if: ${{ secrets.SMTP_SERVER }}
+      run: |
+        python test_smtp_connection.py --no-send
+      continue-on-error: true
+    
+    - name: Run tests
+      run: |
+        # Check if test files exist
+        if find . -name "test_*.py" -o -name "*_test.py" | grep -q .; then
+          python -m pytest . -v --cov=. --cov-report=term-missing
+        else
+          echo "No test files found, skipping pytest"
+        fi

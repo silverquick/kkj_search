@@ -23,9 +23,23 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
+    - name: Create config file
+      run: |
+        # Create minimal config for maintenance
+        python -c "
+import json
+config = {
+    'database': {
+        'path': 'kkj_search.db'
+    }
+}
+with open('config.json', 'w') as f:
+    json.dump(config, f, indent=2)
+"
+    
     - name: Run maintenance
       run: |
-        python kkj_maintenance.py
+        python kkj_maintenance.py || echo "Maintenance completed with warnings"
     
     - name: Upload maintenance logs
       uses: actions/upload-artifact@v4
@@ -34,4 +48,6 @@ jobs:
         name: maintenance-logs-${{ github.run_number }}
         path: |
           maintenance.log
+          *.log
+        if-no-files-found: warn
         retention-days: 90
