@@ -13,7 +13,8 @@ def create_config():
     
     # 環境変数の取得とバリデーション
     smtp_server = os.environ.get('SMTP_SERVER', 'smtp.gmail.com')
-    smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+    smtp_port_str = os.environ.get('SMTP_PORT', '587')
+    smtp_port = int(smtp_port_str) if smtp_port_str else 587
     smtp_username = os.environ.get('SMTP_USERNAME', '')
     smtp_password = os.environ.get('SMTP_PASSWORD', '')
     email_from = os.environ.get('EMAIL_FROM', '')
@@ -55,14 +56,14 @@ def create_config():
             'subject': 'KKJ新着案件情報 - {date}'
         },
         'search': {
-            'keywords': os.environ.get('SEARCH_KEYWORDS', 'システム開発,アプリケーション開発,ソフトウェア開発').split(','),
-            'exclude_keywords': os.environ.get('EXCLUDE_KEYWORDS', '工事,建設,建築').split(','),
-            'max_results': int(os.environ.get('MAX_RESULTS', '50'))
+            'keywords': [k.strip() for k in os.environ.get('SEARCH_KEYWORDS', 'システム開発,アプリケーション開発,ソフトウェア開発').split(',') if k.strip()],
+            'exclude_keywords': [k.strip() for k in os.environ.get('EXCLUDE_KEYWORDS', '工事,建設,建築').split(',') if k.strip()],
+            'max_results': int(os.environ.get('MAX_RESULTS', '50') or '50')
         },
         'openai': {
             'api_key': openai_api_key,
             'model': os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo'),
-            'max_tokens': int(os.environ.get('OPENAI_MAX_TOKENS', '500'))
+            'max_tokens': int(os.environ.get('OPENAI_MAX_TOKENS', '500') or '500')
         },
         'database': {
             'path': 'kkj_search.db'
