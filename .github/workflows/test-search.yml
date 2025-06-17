@@ -1,0 +1,165 @@
+name: Test Search Function
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-search:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Create test config
+      run: |
+        # 検索機能テスト用の最小限の設定を作成
+        python -c "
+import json
+config = {
+    'organization': '防衛省',
+    'keywords': ['システム', '調査', '研究'],
+    'exclude_keywords': ['工事', '建設', '建築'],
+    'database': {
+        'path': 'test_search.db'
+    },
+    'smtp': {
+        'server': 'dummy.smtp.server',
+        'port': 587,
+        'use_tls': True,
+        'username': 'dummy@example.com',
+        'password': 'dummy_password'
+    },
+    'notification': {
+        'from_email': 'dummy@example.com',
+        'from_name': 'テストシステム',
+        'to_emails': ['dummy@example.com'],
+        'subject': '【官公需】新規案件通知',
+        'max_items_per_mail': 50,
+        'always_notify': False
+    },
+    'openai': {
+        'api_key': 'dummy_api_key',
+        'model': 'gpt-3.5-turbo'
+    }
+}
+with open('config.json', 'w', encoding='utf-8') as f:
+    json.dump(config, f, ensure_ascii=False, indent=2)
+print('テスト用 config.json を作成しました')
+"
+    
+    - name: Test search function
+      run: |
+        # 検索機能のみをテストするスクリプトを作成
+        cat > test_search_only.py << 'EOF'
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+import json
+from kkj_search import KKJSearcher
+
+def test_search():
+    """検索機能のみをテスト（メール送信はスキップ）"""
+    try:
+        print("=== 官公需検索機能テスト開始 ===")
+        
+        # 設定ファイル読み込み
+        with open('config.json', 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        # 検索実行
+        searcher = KKJSearcher(config)
+        
+        # 検索処理のみ実行（メール送信はスキップ）
+        print(f"検索対象組織: {config['organization']}")
+        print(f"検索キーワード: {', '.join(config['keywords'])}")
+        print(f"除外キーワード: {', '.join(config.get('exclude_keywords', []))}")
+        
+        # 検索実行
+        results = searcher.search()
+        print(f"\n検索完了: {len(results)} 件の案件を取得")
+        
+        # 新規案件の確認（データベースはテスト用なので全て新規扱い）
+        new_items = searcher.check_new_items(results)
+        print(f"新規案件数: {len(new_items)} 件")
+        
+        # 検索結果のサンプル表示
+        if new_items:
+            print("\n=== 新規案件サンプル（最大3件） ===")
+            for i, item in enumerate(new_items[:3], 1):
+                print(f"\n【案件 {i}】")
+                print(f"件名: {item.get('project_name', '不明')}")
+                print(f"機関名: {item.get('organization_name', '不明')}")
+                print(f"公告日: {item.get('cft_issue_date', '不明')}")
+                print(f"URL: {item.get('external_document_uri', '不明')}")
+        
+        print("\n=== テスト完了 ===")
+        print("検索機能は正常に動作しています")
+        
+        # 統計情報を保存
+        stats = {
+            'total_results': len(results),
+            'new_items': len(new_items),
+            'keywords': config['keywords'],
+            'organization': config['organization']
+        }
+        with open('search_stats.json', 'w', encoding='utf-8') as f:
+            json.dump(stats, f, ensure_ascii=False, indent=2)
+        
+        return 0
+        
+    except Exception as e:
+        print(f"\nエラーが発生しました: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+if __name__ == '__main__':
+    sys.exit(test_search())
+EOF
+        
+        # テスト実行
+        python test_search_only.py
+    
+    - name: Check test results
+      if: always()
+      run: |
+        # テスト結果の確認
+        if [ -f "search_stats.json" ]; then
+          echo "=== 検索統計情報 ==="
+          cat search_stats.json
+        else
+          echo "検索統計情報が見つかりません"
+        fi
+        
+        # データベースファイルの確認
+        if [ -f "test_search.db" ]; then
+          echo -e "\n=== データベースファイル情報 ==="
+          ls -lh test_search.db
+        fi
+    
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: search-test-results-${{ github.run_number }}
+        path: |
+          *.log
+          search_stats.json
+          test_search.db
+        if-no-files-found: warn
+        retention-days: 7
