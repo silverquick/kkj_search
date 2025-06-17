@@ -1,4 +1,4 @@
-name: Test Search Function
+name: Test Search
 
 on:
   push:
