@@ -43,6 +43,9 @@ def create_config():
     
     # 設定の構築
     config = {
+        'organization': os.environ.get('ORGANIZATION', '防衛省'),
+        'keywords': [k.strip() for k in os.environ.get('SEARCH_KEYWORDS', 'システム開発,アプリケーション開発,ソフトウェア開発').split(',') if k.strip()],
+        'exclude_keywords': [k.strip() for k in os.environ.get('EXCLUDE_KEYWORDS', '工事,建設,建築').split(',') if k.strip()],
         'smtp': {
             'server': smtp_server,
             'port': smtp_port,
@@ -50,15 +53,13 @@ def create_config():
             'password': smtp_password,
             'use_tls': True
         },
-        'email': {
-            'from': email_from,
-            'to': email_to_list,
-            'subject': 'KKJ新着案件情報 - {date}'
-        },
-        'search': {
-            'keywords': [k.strip() for k in os.environ.get('SEARCH_KEYWORDS', 'システム開発,アプリケーション開発,ソフトウェア開発').split(',') if k.strip()],
-            'exclude_keywords': [k.strip() for k in os.environ.get('EXCLUDE_KEYWORDS', '工事,建設,建築').split(',') if k.strip()],
-            'max_results': int(os.environ.get('MAX_RESULTS', '50') or '50')
+        'notification': {
+            'from_email': email_from,
+            'from_name': '官公需情報システム',
+            'to_emails': email_to_list,
+            'subject': '【官公需】新規案件通知',
+            'max_items_per_mail': 50,
+            'always_notify': True
         },
         'openai': {
             'api_key': openai_api_key,

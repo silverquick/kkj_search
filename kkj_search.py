@@ -423,7 +423,22 @@ class KKJSearchNotifier:
             msg['From'] = notification_config['from_email']
             
         msg['To'] = ', '.join(notification_config['to_emails'])
-        msg['Subject'] = notification_config['subject']
+        
+        # 件名に件数を含める
+        base_subject = notification_config.get('subject', '【官公需】防衛省 新規案件通知')
+        # 「新規案件通知」の部分を置き換える
+        if '新規案件通知' in base_subject:
+            if new_items:
+                msg['Subject'] = base_subject.replace('新規案件通知', f'新規案件{len(new_items)}件')
+            else:
+                msg['Subject'] = base_subject.replace('新規案件通知', '新規案件なし')
+        else:
+            # 「新規案件通知」が含まれていない場合は末尾に追加
+            if new_items:
+                msg['Subject'] = f"{base_subject} - 新規案件{len(new_items)}件"
+            else:
+                msg['Subject'] = f"{base_subject} - 新規案件なし"
+        
         msg.attach(MIMEText(body, 'plain', 'utf-8'))
         
         try:
